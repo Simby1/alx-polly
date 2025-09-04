@@ -2,13 +2,17 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
+import { sanitizeText, sanitizeStringArray } from "@/lib/utils";
 
 // CREATE POLL
 export async function createPoll(formData: FormData) {
   const supabase = await createClient();
 
-  const question = formData.get("question") as string;
-  const options = formData.getAll("options").filter(Boolean) as string[];
+  const rawQuestion = formData.get("question") as string;
+  const rawOptions = formData.getAll("options").filter(Boolean) as string[];
+
+  const question = sanitizeText(rawQuestion);
+  const options = sanitizeStringArray(rawOptions);
 
   if (!question || options.length < 2) {
     return { error: "Please provide a question and at least two options." };
@@ -63,6 +67,7 @@ export async function getUserPolls() {
 // GET POLL BY ID
 export async function getPollById(id: string) {
   const supabase = await createClient();
+  // Fetch poll
   const { data, error } = await supabase
     .from("polls")
     .select("*")
@@ -70,6 +75,18 @@ export async function getPollById(id: string) {
     .single();
 
   if (error) return { poll: null, error: error.message };
+
+  // Enforce authorization: only owner can access
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return { poll: null, error: "Not authenticated" };
+  }
+  if (data.user_id !== user.id) {
+    return { poll: null, error: "Not authorized to access this poll" };
+  }
+
   return { poll: data, error: null };
 }
 
@@ -108,8 +125,11 @@ export async function deletePoll(id: string) {
 export async function updatePoll(pollId: string, formData: FormData) {
   const supabase = await createClient();
 
-  const question = formData.get("question") as string;
-  const options = formData.getAll("options").filter(Boolean) as string[];
+  const rawQuestion = formData.get("question") as string;
+  const rawOptions = formData.getAll("options").filter(Boolean) as string[];
+
+  const question = sanitizeText(rawQuestion);
+  const options = sanitizeStringArray(rawOptions);
 
   if (!question || options.length < 2) {
     return { error: "Please provide a question and at least two options." };

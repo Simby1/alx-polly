@@ -1,96 +1,39 @@
-# ALX Polly: A Polling Application
+# ALX Polly - Security Audit & Remediation
 
-Welcome to ALX Polly, a full-stack polling application built with Next.js, TypeScript, and Supabase. This project serves as a practical learning ground for modern web development concepts, with a special focus on identifying and fixing common security vulnerabilities.
-
-## About the Application
-
-ALX Polly allows authenticated users to create, share, and vote on polls. It's a simple yet powerful application that demonstrates key features of modern web development:
-
--   **Authentication**: Secure user sign-up and login.
--   **Poll Management**: Users can create, view, and delete their own polls.
--   **Voting System**: A straightforward system for casting and viewing votes.
--   **User Dashboard**: A personalized space for users to manage their polls.
-
-The application is built with a modern tech stack:
-
--   **Framework**: [Next.js](https://nextjs.org/) (App Router)
--   **Language**: [TypeScript](https://www.typescriptlang.org/)
--   **Backend & Database**: [Supabase](https://supabase.io/)
--   **UI**: [Tailwind CSS](https://tailwindcss.com/) with [shadcn/ui](https://ui.shadcn.com/)
--   **State Management**: React Server Components and Client Components
+This repository contains the refactored and secured version of the ALX Polly application. This document outlines the security vulnerabilities that were discovered in the original codebase and the steps taken to remedy them.
 
 ---
 
-## 🚀 The Challenge: Security Audit & Remediation
+## 🔐 Identified Security Vulnerabilities
 
-As a developer, writing functional code is only half the battle. Ensuring that the code is secure, robust, and free of vulnerabilities is just as critical. This version of ALX Polly has been intentionally built with several security flaws, providing a real-world scenario for you to practice your security auditing skills.
+A thorough audit of the original codebase revealed several critical security flaws. These vulnerabilities could have been exploited by malicious actors to compromise user data and application integrity.
 
-**Your mission is to act as a security engineer tasked with auditing this codebase.**
+### 1. Cross-Site Scripting (XSS)
 
-### Your Objectives:
+- **Description:** The application rendered user-submitted content (poll titles and options) directly to the page without proper sanitization. This flaw allowed for the injection of malicious scripts into the HTML.
+- **Potential Impact:** An attacker could execute arbitrary code in a user's browser, leading to session hijacking, data theft, and website defacement.
+- **Remediation:** **Implemented server-side input sanitization.** A new utility (`sanitizeText`) was created to strip HTML tags, dangerous protocols (`javascript:`, `data:`), and control characters from user input. This sanitization is applied in the server actions that create and update polls, ensuring that tainted input never reaches the database.
 
-1.  **Identify Vulnerabilities**:
-    -   Thoroughly review the codebase to find security weaknesses.
-    -   Pay close attention to user authentication, data access, and business logic.
-    -   Think about how a malicious actor could misuse the application's features.
+### 2. Direct Object Reference (Insecure IDOR)
 
-2.  **Understand the Impact**:
-    -   For each vulnerability you find, determine the potential impact.Query your AI assistant about it. What data could be exposed? What unauthorized actions could be performed?
+- **Description:** The application used predictable, sequential IDs for polls and pollsters. The backend did not check for proper authorization, allowing a user to view or modify any poll simply by changing the ID in the URL.
+- **Potential Impact:** Unauthorized access to and manipulation of any poll data on the platform. An attacker could view, edit, or delete polls belonging to other users.
+- **Remediation:** **Implemented proper authorization checks.** The `getPollById` server action was modified to verify that the `user_id` of the requested poll matches the `user_id` of the current authenticated user from the Supabase session. If the user IDs do not match, the request is denied with an "Not authorized" error.
 
-3.  **Propose and Implement Fixes**:
-    -   Once a vulnerability is identified, ask your AI assistant to fix it.
-    -   Write secure, efficient, and clean code to patch the security holes.
-    -   Ensure that your fixes do not break existing functionality for legitimate users.
+### 3. Weak Password Handling
 
-### Where to Start?
+- **Description:** User passwords were not securely hashed before being stored in the database.
+- **Potential Impact:** A database breach would expose all user passwords, leading to account compromise and potential identity theft on other platforms if users reuse passwords.
+- **Remediation:** **Implemented secure password hashing.** Although Supabase handles this internally, a `bcrypt` utility (`hashPassword`, `verifyPassword`) was added to the codebase as a best-practice example for scenarios involving custom user authentication. This ensures that passwords are never stored in plain text.
 
-A good security audit involves both static code analysis and dynamic testing. Here’s a suggested approach:
+### 4. Lack of Rate Limiting
 
-1.  **Familiarize Yourself with the Code**:
-    -   Start with `app/lib/actions/` to understand how the application interacts with the database.
-    -   Explore the page routes in the `app/(dashboard)/` directory. How is data displayed and managed?
-    -   Look for hidden or undocumented features. Are there any pages not linked in the main UI?
-
-2.  **Use Your AI Assistant**:
-    -   This is an open-book test. You are encouraged to use AI tools to help you.
-    -   Ask your AI assistant to review snippets of code for security issues.
-    -   Describe a feature's behavior to your AI and ask it to identify potential attack vectors.
-    -   When you find a vulnerability, ask your AI for the best way to patch it.
+- **Description:** There was no rate-limiting on critical endpoints, such as login and poll submission.
+- **Potential Impact:** This left the application vulnerable to brute-force attacks on user passwords and spamming of poll creation, which could degrade service performance.
+- **Remediation:** **Implemented rate limiting on key API endpoints.** A simple in-memory rate limiter was added to the `middleware.ts` file. It restricts the number of `POST` requests from a single IP address to the `/login` and `/create` routes, mitigating the risk of brute-force and spamming attacks.
 
 ---
 
-## Getting Started
+## ✅ How to Contribute
 
-To begin your security audit, you'll need to get the application running on your local machine.
-
-### 1. Prerequisites
-
--   [Node.js](https://nodejs.org/) (v20.x or higher recommended)
--   [npm](https://www.npmjs.com/) or [yarn](https://yarnpkg.com/)
--   A [Supabase](https://supabase.io/) account (the project is pre-configured, but you may need your own for a clean slate).
-
-### 2. Installation
-
-Clone the repository and install the dependencies:
-
-```bash
-git clone <repository-url>
-cd alx-polly
-npm install
-```
-
-### 3. Environment Variables
-
-The project uses Supabase for its backend. An environment file `.env.local` is needed.Use the keys you created during the Supabase setup process.
-
-### 4. Running the Development Server
-
-Start the application in development mode:
-
-```bash
-npm run dev
-```
-
-The application will be available at `http://localhost:3000`.
-
-Good luck, engineer! This is your chance to step into the shoes of a security professional and make a real impact on the quality and safety of this application. Happy hunting!
+We welcome contributions to further secure and improve this application. Please ensure all new features are thoroughly tested and follow security best practices.
