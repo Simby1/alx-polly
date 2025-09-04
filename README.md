@@ -31,9 +31,3 @@ A thorough audit of the original codebase revealed several critical security fla
 - **Description:** There was no rate-limiting on critical endpoints, such as login and poll submission.
 - **Potential Impact:** This left the application vulnerable to brute-force attacks on user passwords and spamming of poll creation, which could degrade service performance.
 - **Remediation:** **Implemented rate limiting on key API endpoints.** A simple in-memory rate limiter was added to the `middleware.ts` file. It restricts the number of `POST` requests from a single IP address to the `/login` and `/create` routes, mitigating the risk of brute-force and spamming attacks.
-
----
-
-## ✅ How to Contribute
-
-We welcome contributions to further secure and improve this application. Please ensure all new features are thoroughly tested and follow security best practices.
